@@ -20,7 +20,7 @@ const spinners = ['⠋','⠙','⠹','⠸','⠼','⠴','⠦','⠧','⠇','⠏'];
 let spinIndex=0;
 setInterval(()=>{spinIndex=(spinIndex+1)%spinners.length;},500);
 
-// Calculate live cash and time
+// ------------------ CALC ------------------
 const calc = p=>{
   const t = now();
   const mins = Math.floor((t - p.lastUpdated)/60000);
@@ -31,7 +31,7 @@ const calc = p=>{
   return {hrs, mins:minsLeft, live};
 };
 
-// Render stats
+// ------------------ RENDER ------------------
 const render = p=>{
   if(isPromptActive) return;
   if(!p){center.innerHTML=`<div>tag: —</div><div>time: —</div><div>cash: —</div>`; return;}
@@ -43,14 +43,14 @@ const render = p=>{
     <div>cash: ${fmtMoney(live)} <span class="pulse-dot">•</span></div>`;
 };
 
-// Persist tick
+// ------------------ PERSIST ------------------
 const persist = async p=>{
   const t = now();
   const mins = Math.floor((t-p.lastUpdated)/60000);
   if(mins>=1){ p.cash += mins*CASH_PER_MIN; p.lastUpdated += mins*60000; await db.players.put(p);}
 };
 
-// Start ticker
+// ------------------ TICKER ------------------
 const startTicker = ()=>{
   if(ticker) clearInterval(ticker);
   ticker=setInterval(async()=>{
@@ -61,14 +61,13 @@ const startTicker = ()=>{
   },1000);
 };
 
-// Prompt helper
+// ------------------ PROMPT ------------------
 const showPrompt = (text, cb)=>{
   isPromptActive=true;
   center.innerHTML=`<div>${text}</div><input id="inline-input" maxlength="3" autofocus /><div id="create-btns" class="mt-2"></div>`;
   const inp = document.getElementById('inline-input');
   inp.focus();
   const btnsDiv = document.getElementById('create-btns');
-  // Inline buttons
   const saveBtn = document.createElement('span'); saveBtn.textContent='[save]'; saveBtn.className='center-link';
   const loadBtn = document.createElement('span'); loadBtn.textContent='[load]'; loadBtn.className='center-link';
   const resetBtn = document.createElement('span'); resetBtn.textContent='[reset]'; resetBtn.className='center-link';
@@ -84,6 +83,7 @@ const showPrompt = (text, cb)=>{
   resetBtn.onclick=e=>{ e.preventDefault(); resetFlow(inp.value.trim()); };
 };
 
+// ------------------ CLICK OUTSIDE TO CLOSE ------------------
 document.addEventListener('click', e=>{
   if(!isPromptActive) return;
   const id = e.target.id;
@@ -91,13 +91,29 @@ document.addEventListener('click', e=>{
   isPromptActive=false; render(current);
 });
 
-// FLOWS
+// ------------------ FLOWS ------------------
 async function createFlow(){
-  showPrompt('create — enter 3-digit tag:', async val=>{
+  showPrompt('enter 3-digit tag:', async val=>{
     if(!/^[0-9]{3}$/.test(val)){ render(current); return; }
     let p = await db.players.get(val);
-    if(p && p.active){ center.innerHTML=`<div>tag already exists and active</div>`; setTimeout(()=>{isPromptActive=false; render(current);},1500); return;}
-    if(p && !p.active){ center.innerHTML=`<div>tag ${val} is unactive, cannot create again</div>`; setTimeout(()=>{isPromptActive=false; render(current);},1500); return;}
+    
+    if(p && p.active){ 
+      // LOGIN flow
+      current = p;
+      localStorage.setItem('gn3_last_tag', val);
+      center.innerHTML=`<div>tag ${val} loaded (login)</div>`;
+      setTimeout(()=>{isPromptActive=false; render(current);},1500);
+      return;
+    }
+    
+    if(p && !p.active){ 
+      // unactive, cannot use
+      center.innerHTML=`<div>tag ${val} is unactive, cannot use</div>`; 
+      setTimeout(()=>{isPromptActive=false; render(current);},1500);
+      return;
+    }
+    
+    // CREATE new tag
     const t=now();
     p={tag:val,createdAt:t,lastUpdated:t,cash:0,active:true};
     await db.players.add(p);
@@ -131,7 +147,7 @@ async function pingFlow(){
   setTimeout(()=>{isPromptActive=false; render(current);},3000);
 }
 
-// ---------------- SAVE/LOAD ----------------
+// ------------------ SAVE / LOAD ------------------
 async function saveFlow(){
   try{
     const all = await db.players.toArray();
@@ -142,7 +158,7 @@ async function saveFlow(){
     a.href=url;
     a.download=`gn3_save_${new Date().toISOString().replace(/[:.]/g,'-')}.json`;
     document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-    center.innerHTML='> save<br>response: file downloaded.';
+    center.innerHTML='> save<br>file downloaded.';
   } catch(err){center.innerHTML='> save<br>failed.'; console.error(err);}
   setTimeout(()=>{isPromptActive=false; render(current);},1200);
 }
@@ -170,17 +186,17 @@ async function loadFlow(){
       });
       const lastTag=localStorage.getItem('gn3_last_tag');
       current=await db.players.get(lastTag) || await db.players.get(arr[0].tag);
-      center.innerHTML='> load<br>response: save loaded.';
+      center.innerHTML='> load<br>save loaded.';
       setTimeout(()=>{isPromptActive=false; render(current);},1200);
     } catch(err){console.error(err); center.innerHTML='> load<br>error reading file'; setTimeout(()=>{isPromptActive=false; render(current);},1500);}
   };
 }
 
-// LINK HANDLERS
+// ------------------ HANDLERS ------------------
 createLink.onclick=e=>{e.preventDefault(); createFlow();};
 pingLink.onclick=e=>{e.preventDefault(); pingFlow();};
 
-// INITIAL LOAD
+// ------------------ INITIAL LOAD ------------------
 const last = localStorage.getItem('gn3_last_tag');
 if(last){
   const p = await db.players.get(last);
