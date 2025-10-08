@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>gailnireus - gn3</title>
+<script src="https://cdn.jsdelivr.net/npm/dexie@3.2.2/dist/dexie.min.js"></script>
+<script src="e.js" defer></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { background-color:#111; color:#ddd; font-family:monospace; height:100vh; display:flex; flex-direction:column; justify-content:space-between; align-items:center; padding:1rem; }
+  #center { display:flex; flex-direction:column; justify-content:center; align-items:center; flex:1; text-align:center; }
+  .center-link { color:#a855f7; cursor:pointer; margin:0 0.2rem; text-decoration:underline; }
+  .pulse-dot { color:#a855f7; animation:pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:0.2}50%{opacity:1} }
+  .tag-flash { color:#a855f7; animation:flash 1s infinite; }
+  @keyframes flash {0%,100%{opacity:0.2}50%{opacity:1}}
+  input#inline-input { background:#222; color:#ddd; border:none; padding:0.2rem 0.3rem; width:3rem; text-align:center; margin-top:0.5rem; }
+</style>
+</head>
+<body>
+  <div id="header" class="text-xl font-bold sticky top-4">gailnireus</div>
+  <div id="center"></div>
+  <div id="bottom" class="flex justify-center space-x-4">
+    <a href="#" id="create-link" class="center-link">create</a>
+    <a href="#" id="ping-link" class="center-link">ping</a>
+    <input type="file" id="file-input" style="display:none" />
+  </div>
+</body>
+</html>
