@@ -1,5 +1,7 @@
 (async function(){
 const CASH_PER_MIN = 0.01;
+const TAX_INTERVAL_MIN = 5; // setiap 5 minit
+const TAX_AMOUNT = 0.01;
 
 const db = new Dexie('gn3_db_v1');
 db.version(1).stores({
@@ -14,6 +16,8 @@ const fileInput = document.getElementById('file-input');
 let current=null;
 let ticker=null;
 let isPromptActive=false;
+let lastTax = Date.now();
+
 const now = ()=>Date.now();
 const fmtMoney = n=>n.toFixed(2)+'e';
 const spinners = ['⠋','⠙','⠹','⠸','⠼','⠴','⠦','⠧','⠇','⠏'];
@@ -47,7 +51,11 @@ const render = p=>{
 const persist = async p=>{
   const t = now();
   const mins = Math.floor((t-p.lastUpdated)/60000);
-  if(mins>=1){ p.cash += mins*CASH_PER_MIN; p.lastUpdated += mins*60000; await db.players.put(p);}
+  if(mins>=1){ 
+    p.cash += mins*CASH_PER_MIN; 
+    p.lastUpdated += mins*60000; 
+    await db.players.put(p);
+  }
 };
 
 // ------------------ TICKER ------------------
@@ -57,6 +65,17 @@ const startTicker = ()=>{
     if(current && !isPromptActive){
       render(current);
       await persist(current);
+
+      // ---- Maintenance Tax ----
+      const minsSinceTax = (now() - lastTax)/60000;
+      if(minsSinceTax >= TAX_INTERVAL_MIN){
+        current.cash -= TAX_AMOUNT;
+        if(current.cash < 0) current.cash = 0;
+        lastTax = now();
+        await db.players.put(current);
+        center.innerHTML = `system maintenance executed.<br>cash: -${fmtMoney(TAX_AMOUNT)}`;
+        setTimeout(()=>{isPromptActive=false; render(current);},2500);
+      }
     }
   },1000);
 };
@@ -144,7 +163,7 @@ async function pingFlow(){
     else lines.push(`${p.tag} not alive`);
   }
   center.innerHTML='> ping<br>'+lines.join('<br>');
-  setTimeout(()=>{isPromptActive=false; render(current);},3000);
+  setTimeout(()=>{isPromptActive=false; render(current);},4000);
 }
 
 // ------------------ SAVE / LOAD ------------------
